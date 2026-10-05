@@ -1,0 +1,176 @@
+{
+ "user": "Sumit Kumar",
+ "topics": [
+  {
+   "n": "ER Model",
+   "m": 85,
+   "pre": [],
+   "src": "DBMS.pdf p.12"
+  },
+  {
+   "n": "SQL",
+   "m": 72,
+   "pre": [
+    "ER Model"
+   ],
+   "src": "DBMS.pdf p.60"
+  },
+  {
+   "n": "Normalization",
+   "m": 45,
+   "pre": [
+    "1NF",
+    "Functional Dependency"
+   ],
+   "src": "DBMS.pdf p.38"
+  },
+  {
+   "n": "Transactions",
+   "m": 30,
+   "pre": [
+    "SQL"
+   ],
+   "src": "DBMS.pdf p.96"
+  }
+ ],
+ "materials": [
+  [
+   "DBMS Textbook.pdf",
+   "124 pages · 18 topics",
+   "file"
+  ],
+  [
+   "Normalization.pptx",
+   "42 slides · 6 topics",
+   "file"
+  ],
+  [
+   "DBMS Lecture 04.mp4",
+   "58 min · 5 topics",
+   "play"
+  ]
+ ],
+ "ans": {
+  "2nf": {
+   "en": "2NF requires a table to be in 1NF and every non-key attribute to depend on the whole primary key, not just part of it.",
+   "hi": "2NF में टेबल पहले से 1NF में होनी चाहिए और हर non-key attribute पूरी primary key पर निर्भर होना चाहिए।",
+   "hn": "2NF ko simple language mein samjho: table pehle 1NF mein ho, aur har non-key attribute poori primary key par depend kare, sirf uske ek hisse par nahi.",
+   "f": "DBMS.pdf",
+   "p": "Page 38",
+   "q": "A relation is in 2NF if it is in 1NF and no non-prime attribute is partially dependent on any candidate key."
+  },
+  "transaction": {
+   "en": "A transaction is a logical unit of work that follows ACID. COMMIT makes changes permanent; ROLLBACK undoes them.",
+   "hi": "Transaction काम की एक logical इकाई है जो ACID का पालन करती है।",
+   "hn": "Transaction ek logical unit of work hai jo ACID follow karta hai. COMMIT changes ko permanent karta hai, ROLLBACK unhe undo karta hai.",
+   "f": "DBMS Lecture 04",
+   "p": "12:35",
+   "v": 1,
+   "q": "COMMIT makes the changes permanent while ROLLBACK reverts the database to the last committed state."
+  }
+ },
+ "chats": [
+  {
+   "t": "Explain 2NF in Hinglish",
+   "g": "Today",
+   "msgs": [
+    {
+     "u": "Explain 2NF in Hinglish"
+    },
+    {
+     "k": "2nf",
+     "done": 1
+    }
+   ]
+  },
+  {
+   "t": "ACID and transactions",
+   "g": "Yesterday",
+   "msgs": [
+    {
+     "u": "What is a transaction?"
+    },
+    {
+     "k": "transaction",
+     "done": 1
+    }
+   ]
+  }
+ ],
+ "quiz": [
+  {
+   "t": "Normalization",
+   "d": "Medium",
+   "q": "What is the purpose of normalization?",
+   "o": [
+    "Increase redundancy",
+    "Reduce redundancy",
+    "Increase duplication",
+    "Remove tables"
+   ],
+   "a": 1
+  },
+  {
+   "t": "Normalization",
+   "d": "Medium",
+   "q": "A relation in 2NF must first be in:",
+   "o": [
+    "3NF",
+    "BCNF",
+    "1NF",
+    "4NF"
+   ],
+   "a": 2
+  },
+  {
+   "t": "Transactions",
+   "d": "Medium",
+   "q": "Which statement undoes uncommitted changes?",
+   "o": [
+    "COMMIT",
+    "ROLLBACK",
+    "SAVE",
+    "GRANT"
+   ],
+   "a": 1,
+   "mis": [
+    "COMMIT",
+    "ROLLBACK"
+   ]
+  },
+  {
+   "t": "Transactions",
+   "d": "Hard",
+   "q": "The 'I' in ACID stands for:",
+   "o": [
+    "Integrity",
+    "Isolation",
+    "Indexing",
+    "Identity"
+   ],
+   "a": 1
+  }
+ ],
+ "plan": [
+  [
+   "Mon",
+   "Transactions",
+   "45 min"
+  ],
+  [
+   "Tue",
+   "Normalization",
+   "60 min"
+  ],
+  [
+   "Wed",
+   "Transactions",
+   "30 min"
+  ],
+  [
+   "Thu",
+   "Practice assessment",
+   "30 min"
+  ]
+ ]
+}

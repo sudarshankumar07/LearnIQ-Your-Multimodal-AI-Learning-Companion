@@ -149,7 +149,13 @@ async function processPDF(filePath) {
         }
         // Create chunks
         
-        const chunks = createChunks(text);
+        const chunks = pdfData.pages.flatMap(page =>
+            createChunks(page.text).map((chunk, chunkIndex) => ({
+                text: chunk,
+                pageNumber: page.num,
+                chunkIndex
+            }))
+        );
         if (chunks.length === 0) {
             return {
                 success: false,
@@ -160,18 +166,21 @@ async function processPDF(filePath) {
 
         // Generate ONE embedding per chunk
         const points = [];
+        const documentId = randomUUID();
         for (let i = 0; i < chunks.length; i++) {
 
-            const chunkText = chunks[i];
+            const chunk = chunks[i];
 
-            const embedding = await createEmbedding(chunkText);
+            const embedding = await createEmbedding(chunk.text);
 
             points.push({
                 id: randomUUID(),
                 vector: embedding,
                 payload: {
-                    text: chunkText,
-                    chunkIndex: i
+                    text: chunk.text,
+                    chunkIndex: chunk.chunkIndex,
+                    pageNumber: chunk.pageNumber,
+                    documentId: documentId
                 }
             });
         }
@@ -187,7 +196,8 @@ async function processPDF(filePath) {
         success: true,
         type: "TEXT",
         pages: pdfData.total,
-        totalChunks: chunks.length
+        totalChunks: chunks.length,
+        documentId: documentId
         };
     } catch (error) {
 
@@ -269,12 +279,18 @@ app.post('/ask', async(req,res)=>{
         }
 
         const releventChunks = await semanticSearch(query, 3);
-        const context = releventChunks.map(chunk => chunk.payload.text).join('\n\n');
+        const context = releventChunks
+                .map(chunk => `[Page ${chunk.payload.pageNumber}]\n${chunk.payload.text}`)
+                .join('\n\n');
         const respone = await ai.models.generateContent({
             model : 'gemini-3.5-flash-lite',
-            contents : `explain the pdf in easy way : ${query}, ${context}`
+            contents : `Use only the provided PDF context.
+                        When giving information from the context, mention the relevant page.
+                        If the answer is not present in the context, say that the document does 
+                        not contain enough information to answer it.: ${query}, ${context}`
         });
-
+        console.log(query)
+        console.log(respone.text)
         res.send(respone.text);
     }catch(err){
         console.log(err);
