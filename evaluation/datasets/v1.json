@@ -1,0 +1,68 @@
+{
+  "datasetId": "learniq-known-course-facts",
+  "version": "1.0.0",
+  "createdAt": "2026-10-11",
+  "description": "Small synthetic source-grounding smoke benchmark. It is not a substitute for a team-selected course benchmark or a quality evaluation.",
+  "documents": [
+    {
+      "key": "cedar",
+      "file": "../fixtures/known-facts-cedar.pdf",
+      "title": "Known Facts Cedar.pdf",
+      "sourceText": "Cedar: 40 ml water/day; 12 cm after 7 days; 6 h sun/day."
+    },
+    {
+      "key": "maple",
+      "file": "../fixtures/known-facts-maple.pdf",
+      "title": "Known Facts Maple.pdf",
+      "sourceText": "Maple: 20 ml water/day; 8 cm after 7 days; 6 h sun/day."
+    }
+  ],
+  "questions": [
+    {
+      "id": "direct-cedar-height",
+      "question": "How tall was the basil plant in Trial Cedar after a week?",
+      "expectedLocations": [{ "documentKey": "cedar", "locationType": "page", "locationNumber": 1 }],
+      "expectedEvidence": ["12 cm after 7 days"],
+      "expectedAnswerCharacteristics": ["States 12 cm", "Cites Trial Cedar page 1"],
+      "shouldAnswer": true
+    },
+    {
+      "id": "paraphrase-cedar-water",
+      "question": "What daily amount of water did the Cedar trial receive?",
+      "expectedLocations": [{ "documentKey": "cedar", "locationType": "page", "locationNumber": 1 }],
+      "expectedEvidence": ["Cedar: 40 ml water/day"],
+      "expectedAnswerCharacteristics": ["States 40 ml per day", "Cites Trial Cedar page 1"],
+      "shouldAnswer": true
+    },
+    {
+      "id": "multi-source-height-comparison",
+      "question": "Compare the Cedar and Maple plant heights after a week. Give both heights and their difference without claiming what caused the difference.",
+      "expectedLocations": [
+        { "documentKey": "cedar", "locationType": "page", "locationNumber": 1 },
+        { "documentKey": "maple", "locationType": "page", "locationNumber": 1 }
+      ],
+      "expectedEvidence": ["12 cm after 7 days", "8 cm after 7 days"],
+      "expectedAnswerCharacteristics": ["States 12 cm and 8 cm", "Calculates a 4 cm difference", "Cites both documents", "Does not infer causation"],
+      "shouldAnswer": true
+    },
+    {
+      "id": "unsupported-soil-ph",
+      "question": "What soil pH was measured in Trial Cedar?",
+      "expectedLocations": [],
+      "expectedEvidence": [],
+      "expectedAnswerCharacteristics": ["Clearly says soil pH is not provided", "Does not guess", "Does not cite unrelated facts as an answer"],
+      "shouldAnswer": false
+    },
+    {
+      "id": "unsupported-causal-claim",
+      "question": "Do these two trials prove that extra water caused the Cedar plant to grow taller?",
+      "expectedLocations": [
+        { "documentKey": "cedar", "locationType": "page", "locationNumber": 1 },
+        { "documentKey": "maple", "locationType": "page", "locationNumber": 1 }
+      ],
+      "expectedEvidence": ["Cedar: 40 ml water/day", "Maple: 20 ml water/day", "6 h sun/day"],
+      "expectedAnswerCharacteristics": ["Says the observations do not establish causation", "May report the observed heights and water amounts", "Cites both documents"],
+      "shouldAnswer": false
+    }
+  ]
+}

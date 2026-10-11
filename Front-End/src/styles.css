@@ -15,6 +15,24 @@
     padding-bottom: env(safe-area-inset-bottom, 0px)
 }
 
+.auth-shell {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    color: var(--fg);
+    background: var(--bg)
+}
+
+.auth-card {
+    width: min(100%, 420px);
+    padding: 28px
+}
+
+.auth-card h2 {
+    text-align: center
+}
+
 @media (prefers-color-scheme:dark) {
     :root:not([data-theme="light"]) {
         --bg: #212121;

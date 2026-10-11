@@ -1,0 +1,28 @@
+# Track D implementation status
+
+This status describes the repository after the current implementation pass. No live Gemini or Qdrant requests were made.
+
+| Requirement | Status | Current evidence / remaining work |
+|---|---|---|
+| PDF knowledge ingestion | Implemented, not verified | Topic responses now attach and validate evidence per chunk. Chunks without validated topic evidence remain indexed with no topic IDs and a warning instead of aborting the upload. Development diagnostics include stage, chunk index/ID, text length, topic count, and validation reason without source text. A local three-page PDF parser/index-flow smoke with provider/storage doubles passed; this does not identify the original live failing upload or verify Gemini/Qdrant. |
+| Slide ingestion | Implemented, not verified | PPTX slide text and embedded raster images are extracted; Gemini adds image OCR/visual descriptions, indexed with slide locations and previewed as escaped text. Speaker notes and SVG image analysis are absent; no live sample was processed. |
+| Video ingestion | Implemented, not verified | MP4/MOV/WebM upload uses Gemini Files transcription, timestamped chunking, Qdrant indexing, and authenticated timestamp playback. Local transcript chunk tests pass; provider credentials and live service checks are absent. Video frame understanding is absent. |
+| Multiple documents and library | Implemented, not verified | SQLite stores owner-scoped document metadata and originals remain in private storage. Qdrant payloads and query/delete filters include authenticated owner IDs. Automated tests cover owner filter composition and SQLite ownership; no live Qdrant account-isolation test was possible. |
+| Grounded tutor chat | In progress | The supplied Qdrant HTTP 400 identifies a missing payload index on `ownerId`. Startup now checks and ensures keyword payload indexes for both `ownerId` and `documentId`, which cover query and delete filters, without changing points or vectors. SDK and mocked filter tests pass; the backend was not restarted against the live collection, so live retrieval and account isolation remain unverified. |
+| Assessments | Implemented, not verified | Gemini question generation and independent verification; server grading; practice, one-time baseline diagnostic, and mock-exam modes; observed-performance difficulty adaptation; per-user persisted sessions, exact and semantic repeat checks, cited feedback, weak-topic reports, and repeated-error evidence-gated tentative misconception analysis. Local lifecycle tests pass. The reported assessment HTTP 400 has not been tied to a specific request/response or reproduced against a configured service. |
+| Learner model | Implemented, not verified | Authenticated per-user Beta-Bernoulli estimates update from server-graded answers; adaptive difficulty, diagnostic mode, and prerequisite-aware topic data exist. Regression coverage fixed the no-weak-topic case so strong history is not treated as a cold start. Three-profile simulation executed against real assessment/store logic with mocked provider boundaries; see its JSON report. Estimates are observed correctness only. Tutoring-turn updates remain absent. |
+| Evaluation | In progress | Five-case versioned synthetic PDF benchmark and runner exist for live retrieval/answer/citation metrics; it was not run. A deterministic 3-profile/9-session learner simulation completed with results saved. No standard framework, team-selected course dataset, or live RAG metrics. |
+| Demo data removal | Implemented, not verified | Removed `mock.json` and its types/import path, fabricated progress and course map values, and prefilled login credentials. Empty states replace sample content. |
+| Feature organization and themes | Implemented, not verified | Existing React/Vite structure and theme tokens remain. Frontend TypeScript check and Vite production build pass (the build required execution outside the restricted sandbox); no browser theme test was run. |
+| Security | In progress | Scrypt accounts, HTTP-only SameSite sessions, origin checks, SQLite parameterized persistence, owner-scoped routes and Qdrant filters, upload limits/signatures, and rate limits. MFA and production deployment controls remain unverified; see `SECURITY_AUDIT.md`. |
+| Documentation and demo | In progress | Setup, architecture, learner estimate, requirement traceability, evaluation methodology, preflight, synthetic benchmark, learner simulation report, and timed recording script are documented. No live RAG metrics or video recording exist. |
+
+## Next priorities
+
+1. After the owner confirms the exposed provider credential was rotated and the replacement is installed locally, run the read-only preflight and reproduce the original PDF, Qdrant, and assessment failures using disposable data. Record sanitized provider responses and request metadata.
+2. Run the synthetic RAG benchmark, then repeat ingestion/retrieval checks on a team-selected redistributable course set. Add human annotation/framework evaluation for faithfulness and answer relevance; measure citation accuracy, semantic repeats, and live multi-user Qdrant isolation.
+3. Complete browser checks and record/publish the required 3–10 minute demo after live flows pass.
+
+## Current local verification
+
+`npm test` passes 61/61 tests; frontend TypeScript check, all server JavaScript syntax checks, and `git diff --check` pass. `npm run build` succeeds when run outside the restricted filesystem sandbox. The deterministic learner simulation completed 9 sessions across 3 test profiles. No live Gemini, Qdrant, uploaded-PDF, assessment-provider, or browser E2E request was made because credential rotation and provider access were not confirmed.

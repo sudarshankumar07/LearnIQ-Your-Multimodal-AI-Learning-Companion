@@ -1,2 +1,11 @@
 .env
+.env.*
+!.env.example
 node_modules/
+server/uploads/
+server/data/
+/data/
+Front-End/dist/
+*.db
+*.sqlite
+uploads/

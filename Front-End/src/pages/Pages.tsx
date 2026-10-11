@@ -1,121 +1,98 @@
-import { useRef, useState, type CSSProperties } from 'react';
-import { Icon, type IconName } from '../icons';
+import { useEffect, useRef, useState } from 'react';
+import { Icon } from '../icons';
 import { api } from '../api';
 import type { Ctx } from '../types';
-
-const COL = ['#a24bc0', '#ee4a7a', '#4db5f5', '#2f74b8', '#4eaeb9'], DK = ['#7a2f94', '#c93063', '#2f94d6', '#1f4f82', '#37858f'];
-const AR: CSSProperties = { clipPath: 'polygon(0 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,0 100%)' };
 const Bar = ({ v, w }: { v: number; w?: boolean }) => <div className={`bar ${w ? 'w' : ''}`}><i style={{ width: `${v}%` }} /></div>;
-const Ttl = ({ a, b }: { a: string; b: string }) => <div style={{ textAlign: 'center', marginBottom: 16 }}><b style={{ color: 'var(--mu)' }}>{a}</b><p className="mu sm">{b}</p></div>;
-const Ring = ({ v, c }: { v: number; c: string }) => {
-  const C = 2 * Math.PI * 44; return (
-    <svg width="110" height="110" viewBox="0 0 110 110"><circle cx="55" cy="55" r="44" fill="none" stroke="var(--hv)" strokeWidth="10" />
-      <circle cx="55" cy="55" r="44" fill="none" stroke={c} strokeWidth="10" strokeDasharray={`${C * v / 100} ${C}`} transform="rotate(-90 55 55)" />
-      <text x="55" y="60" textAnchor="middle" fontSize="15" fontWeight="600" fill="var(--fg)">{v}%</text></svg>)
-};
-
-const STEPS = ['File uploaded', 'Text extracted', 'Images analyzed', 'Topics identified', 'Sources mapped', 'Knowledge base created'];
 export function Library({ ctx }: { ctx: Ctx }) {
-  const [p, setP] = useState(-1);
+  const [documents, setDocuments] = useState<Awaited<ReturnType<typeof api.documents>>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [fileName, setFileName] = useState('');
   const input = useRef<HTMLInputElement>(null);
+  const refresh = async () => { setLoading(true); setError(''); try { setDocuments(await api.documents()); } catch (err) { setError(err instanceof Error ? err.message : 'Could not load documents.'); } finally { setLoading(false); } };
+  useEffect(() => { void refresh(); }, []);
   const run = async (file?: File) => {
     if (!file) return;
-    setFileName(file.name); setP(0);
+    if (!['.pdf', '.pptx', '.mp4', '.mov', '.webm'].some(extension => file.name.toLowerCase().endsWith(extension))) { setError('Choose a PDF, PPTX, MP4, MOV, or WebM file.'); return; }
+    setFileName(file.name); setUploading(true); setError('');
     try {
       await api.upload(file);
-      setP(5);
+      await refresh();
     } catch (err) {
-      setP(-1);
-      ctx.toast(err instanceof Error ? err.message : 'PDF upload failed. Please try again.');
-    }
+      setError(err instanceof Error ? err.message : 'PDF upload failed. Please try again.');
+    } finally { setUploading(false); }
   };
   return (<div className="page"><h2>Library</h2>
-    {p < 0
-      ? <div className="card" style={{ textAlign: 'center', borderStyle: 'dashed', padding: '44px 20px' }}><div className="mu"><Icon n="upl" s={28} /></div>
-        <h3 style={{ margin: '8px 0 2px' }}>Drag and drop your files</h3><p className="mu sm" style={{ marginBottom: 14 }}>PDF, PPT, MP4, images</p>
-        <input ref={input} type="file" accept="application/pdf,.pdf" hidden onChange={e => { void run(e.target.files?.[0]); e.currentTarget.value = '' }} />
-        <button className="btn" onClick={() => input.current?.click()}>Browse files</button></div>
-      : <div className="card"><h3>{p < 5 ? `Processing ${fileName}` : `Processed ${fileName}`}</h3>
-        {STEPS.map((s, i) => <p key={s} className="row" style={{ padding: '3px 0', color: i <= p ? 'var(--fg)' : 'var(--mu)' }}>{i <= p ? <Icon n="check" s={16} /> : <span style={{ width: 16 }} />} {s}</p>)}
-        <Bar v={Math.round((p + 1) / 6 * 100)} /></div>}
-    <div className="g">{ctx.db.materials.map(m =>
-      <div key={m[0]} className="card row" style={{ padding: '12px 16px' }}><span className="mu"><Icon n={m[2] as IconName} s={20} /></span>
-        <div className="sp"><b>{m[0]}</b><p className="mu sm">{m[1]}</p></div><span className="tag">Processed</span>
-        <button className="btn o" onClick={() => ctx.setView('2nf')}>View</button></div>)}</div></div>);
+    <div className="card" style={{ textAlign: 'center', borderStyle: 'dashed', padding: '36px 20px' }}><div className="mu"><Icon n="upl" s={28} /></div>
+      <h3 style={{ margin: '8px 0 2px' }}>{uploading ? `Processing ${fileName}…` : 'Add course material'}</h3><p className="mu sm" style={{ marginBottom: 14 }}>PDF pages and PPTX slide text and images, plus MP4/MOV/WebM lecture transcripts, are indexed with page, slide, or timestamp citations. Visual extraction uses Gemini and has not been live-verified here.</p>
+      <input ref={input} type="file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,.pptx,video/mp4,.mp4,video/quicktime,.mov,video/webm,.webm" hidden onChange={e => { void run(e.target.files?.[0]); e.currentTarget.value = ''; }} />
+      <button className="btn" disabled={uploading} onClick={() => input.current?.click()}>{uploading ? 'Processing…' : 'Choose material'}</button></div>
+    {error && <p role="alert" style={{ color: 'var(--rd)' }}>{error}</p>}
+    <h3>Indexed documents</h3>{loading ? <p className="mu">Loading documents…</p> : documents.length ? <div className="g">{documents.map(doc => <div key={doc.id} className="card row" style={{ padding: '12px 16px' }}><span className="mu"><Icon n="file" s={20} /></span><div className="sp"><b>{doc.name}</b><p className="mu sm">{doc.sourceType === 'video' ? `${doc.pages} seconds of transcript` : `${doc.pages} ${doc.sourceType === 'pptx' ? 'slides' : 'pages'} indexed`}</p></div><a className="btn o" href={api.sourceUrl(doc.id, doc.sourceType === 'video' ? 0 : 1, doc.sourceType)} target="_blank" rel="noreferrer">{doc.sourceType === 'video' ? 'Play' : 'Open'}</a>{doc.sourceType === 'pptx' && <a className="btn o" href={api.sourceFileUrl(doc.id)}>Download</a>}<button className="btn o" disabled={deleting === doc.id} onClick={async () => { setDeleting(doc.id); setError(''); try { await api.deleteDocument(doc.id); await refresh(); } catch (err) { setError(err instanceof Error ? err.message : 'Could not delete document.'); } finally { setDeleting(null); } }}>{deleting === doc.id ? 'Deleting…' : 'Delete'}</button></div>)}</div> : <div className="card"><p className="mu">No indexed documents yet. Add course material to start tutoring.</p></div>}
+    </div>);
 }
 
 export function Assessments({ ctx }: { ctx: Ctx }) {
   type Quiz = Awaited<ReturnType<typeof api.generateQuiz>>;
   type Report = Awaited<ReturnType<typeof api.submitGeneratedQuiz>>;
+  const [documents, setDocuments] = useState<Awaited<ReturnType<typeof api.documents>>>([]), [documentsError, setDocumentsError] = useState('');
+  useEffect(() => { api.documents().then(setDocuments).catch(err => setDocumentsError(err instanceof Error ? err.message : 'Could not load documents.')); }, []);
+  const [documentId, setDocumentId] = useState('');
   const [topic, setTopic] = useState(''), [count, setCount] = useState(5), [difficulty, setDifficulty] = useState('mixed'), [type, setType] = useState('mixed');
+  const [mode, setMode] = useState<'practice' | 'mock_exam' | 'diagnostic'>('practice');
   const [quiz, setQuiz] = useState<Quiz | null>(null), [qi, setQi] = useState(0), [answers, setAnswers] = useState<string[]>([]), [value, setValue] = useState('');
   const [report, setReport] = useState<Report | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
-  const start = async () => { setBusy(true); setError(''); try { const next = await api.generateQuiz({ topic, count, difficulty, type }); setQuiz(next); setQi(0); setAnswers([]); setReport(null); setValue('') } catch (e) { setError(e instanceof Error ? e.message : 'Quiz generation failed.') } finally { setBusy(false) } };
+  const start = async () => { setBusy(true); setError(''); try { const next = await api.generateQuiz({ topic, count, difficulty, type, mode, documentId: documentId || undefined }); setQuiz(next); setQi(0); setAnswers([]); setReport(null); setValue('') } catch (e) { setError(e instanceof Error ? e.message : 'Quiz generation failed.') } finally { setBusy(false) } };
   const advance = async () => { if (!quiz) return; const next = [...answers, value]; setAnswers(next); setValue(''); if (qi + 1 < quiz.questions.length) { setQi(qi + 1); return } setBusy(true); try { setReport(await api.submitGeneratedQuiz(quiz.quizId, next)) } catch (e) { setError(e instanceof Error ? e.message : 'Could not submit quiz.') } finally { setBusy(false) } };
-  if (report && quiz) return <div className="page"><div className="card" style={{ textAlign: 'center' }}><p className="mu sm">Assessment complete</p><p className="big" style={{ fontSize: 52 }}>{report.accuracy}%</p><p className="mu">{report.score} of {report.total} correct</p></div>
+  if (report && quiz) return <div className="page"><div className="card" style={{ textAlign: 'center' }}><p className="mu sm">{report.mode === 'mock_exam' ? 'Mock exam complete' : report.mode === 'diagnostic' ? 'Baseline diagnostic complete' : 'Assessment complete'}</p><p className="big" style={{ fontSize: 52 }}>{report.accuracy}%</p><p className="mu">{report.score} of {report.total} correct</p></div>
     <div className="card"><h3>Topic performance</h3>{report.topics.map(t => <div key={t.topic}><div className="row" style={{ marginTop: 12 }}><span className="sp">{t.topic}</span><b>{t.accuracy}%</b></div><Bar v={t.accuracy} w={t.accuracy < 60} /></div>)}</div>
     {!!report.weakTopics.length && <div className="card"><h3>Topics to revise</h3><p className="mu">Based on this assessment: {report.weakTopics.join(', ')}</p></div>}
-    <div className="card"><h3>Answer review</h3>{report.results.map((r, i) => <div key={r.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--bd)' }}><b>{i + 1}. {quiz.questions[i].question}</b><p style={{ color: r.correct ? 'var(--gr)' : 'var(--rd)' }}>{r.correct ? 'Correct' : 'Incorrect'} · Answer: {r.correctAnswer}</p><p className="mu">{r.explanation}</p><p className="mu sm">Source: {r.source} — Page {r.page}</p></div>)}</div>
+    {!!report.possibleMisconceptions.length && <div className="card"><h3>Possible misconception patterns</h3><p className="mu sm">Tentative model analysis based on repeated incorrect answers; this is not a diagnosis.</p>{report.possibleMisconceptions.map((item, i) => <div key={item.topic + i}><b>{item.topic}</b><p>{item.statement}</p><p className="mu sm">Evidence: “{item.evidence}” · model confidence {Math.round(item.confidence * 100)}%</p>{item.sources.map((source, j) => <a className="mu sm" key={source.documentId + j} style={{ marginRight: 10 }} href={api.sourceUrl(source.documentId, source.locationNumber, source.sourceType)} target="_blank" rel="noreferrer">{source.source} · {source.locationType} {source.locationNumber}</a>)}</div>)}</div>}
+    <div className="card"><h3>Answer review</h3>{report.results.map((r, i) => <div key={r.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--bd)' }}><b>{i + 1}. {quiz.questions[i].question}</b><p style={{ color: r.correct ? 'var(--gr)' : 'var(--rd)' }}>{r.correct ? 'Correct' : 'Incorrect'} · Answer: {r.correctAnswer}</p><p className="mu">{r.explanation}</p><p className="mu sm">Source: <a href={api.sourceUrl(r.documentId, r.locationNumber, r.sourceType)} target="_blank" rel="noreferrer">{r.source} — {r.locationType === 'slide' ? 'Slide' : r.locationType === 'time' ? `Video ${Math.floor(r.locationNumber / 60)}:${String(r.locationNumber % 60).padStart(2, '0')}` : `Page ${r.locationNumber}`}</a></p></div>)}</div>
     <div className="row"><button className="btn" onClick={() => { setQuiz(null); setReport(null) }}>New assessment</button></div></div>;
-  if (!quiz) return <div className="page"><h2>Assessments</h2><p className="mu">Create a quiz from your uploaded course material.</p><div className="card g">
+  if (!quiz) return <div className="page"><h2>Assessments</h2><p className="mu">Create practice, baseline diagnostic, or mock exam questions from your uploaded course material.</p><div className="card g">
+    <label>Assessment mode<select className="t" value={mode} onChange={e => setMode(e.target.value as typeof mode)}>{[['practice', 'Practice'], ['diagnostic', 'Baseline diagnostic (new learners)'], ['mock_exam', 'Mock exam']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+    <label>Course material<select className="t" value={documentId} onChange={e => setDocumentId(e.target.value)}><option value="">All my documents</option>{documents.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}</select></label>
+    {documentsError && <p role="alert" style={{ color: 'var(--rd)' }}>{documentsError}</p>}
     <label>Topic or scope<input className="t" value={topic} onChange={e => setTopic(e.target.value)} placeholder="Leave blank to search all material" maxLength={120} /></label>
     <label>Number of questions<select className="t" value={count} onChange={e => setCount(Number(e.target.value))}>{[3, 5, 8, 10].map(n => <option key={n}>{n}</option>)}</select></label>
-    <label>Difficulty<select className="t" value={difficulty} onChange={e => setDifficulty(e.target.value)}>{['mixed', 'easy', 'medium', 'hard'].map(x => <option key={x} value={x}>{x[0].toUpperCase() + x.slice(1)}</option>)}</select></label>
+    <label>Difficulty<select className="t" value={difficulty} onChange={e => setDifficulty(e.target.value)}>{['mixed', 'adaptive', 'easy', 'medium', 'hard'].map(x => <option key={x} value={x}>{x[0].toUpperCase() + x.slice(1)}</option>)}</select></label>
     <label>Question type<select className="t" value={type} onChange={e => setType(e.target.value)}>{[['mixed', 'Mixed'], ['mcq', 'Multiple choice'], ['short', 'Short answer'], ['numerical', 'Numerical']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
     {error && <p style={{ color: 'var(--rd)' }}>{error}</p>}<button className="btn" disabled={busy} onClick={() => void start()}>{busy ? 'Generating…' : 'Generate assessment'}</button></div></div>;
   const q = quiz.questions[qi];
-  return <div className="page"><p className="mu sm">Question {qi + 1} of {quiz.questions.length}</p><Bar v={(qi + 1) / quiz.questions.length * 100} />
+  return <div className="page"><p className="mu sm">{quiz.mode === 'mock_exam' ? 'Mock exam' : quiz.mode === 'diagnostic' ? 'Baseline diagnostic' : 'Practice'} · Question {qi + 1} of {quiz.questions.length}</p>{quiz.personalizationReason && <p className="mu sm">{quiz.personalizationReason}</p>}<Bar v={(qi + 1) / quiz.questions.length * 100} />
     <div className="row"><span className="tag">{q.topic}</span><span className="tag">{q.difficulty}</span><span className="tag">{q.type}</span></div><h2>{q.question}</h2>
     {q.type === 'mcq' ? q.options.map(o => <button key={o} className={`opt ${value === o ? 'sel' : ''}`} onClick={() => setValue(o)}>{o}</button>) : <textarea className="t" value={value} onChange={e => setValue(e.target.value)} rows={3} placeholder={q.type === 'numerical' ? 'Enter a number' : 'Write your answer'} />}
-    <p className="mu sm">Source: {q.source} — Page {q.page}</p>{error && <p style={{ color: 'var(--rd)' }}>{error}</p>}
+    <p className="mu sm">Source: <a href={api.sourceUrl(q.documentId, q.locationNumber, q.sourceType)} target="_blank" rel="noreferrer">{q.source} — {q.locationType === 'slide' ? `Slide ${q.locationNumber}` : q.locationType === 'time' ? `Video ${Math.floor(q.locationNumber / 60)}:${String(q.locationNumber % 60).padStart(2, '0')}` : `Page ${q.locationNumber}`}</a></p>{error && <p style={{ color: 'var(--rd)' }}>{error}</p>}
     <button className="btn" disabled={!value.trim() || busy} onClick={() => void advance()}>{busy ? 'Grading…' : qi === quiz.questions.length - 1 ? 'Submit' : 'Next'}</button></div>;
 }
 
-export function Progress({ ctx }: { ctx: Ctx }) {
-  const T = ctx.topics, w = T.filter(t => t.m < 60).sort((a, b) => a.m - b.m), att = [4, 6, 5, 3], last = [90, 70, 50, 35], R = [96, 76, 56, 36];
-  const ds: [string, number, string][] = [['Overall mastery', 68, 'Across all topics'], ['Topics completed', 78, '14 of 18 topics'], ['Quiz accuracy', 75, 'Last 12 assessments'], ['Weekly goal', 50, '3 of 6 sessions']];
-  return (<div className="page"><h2>Progress</h2>
-    <div className="card"><Ttl a="Learning snapshot" b="Your key numbers at a glance" />
-      <div className="g g4" style={{ textAlign: 'center' }}>{ds.map((d, i) => <div key={d[0]}><div style={{ display: 'grid', placeItems: 'center' }}><Ring v={d[1]} c={COL[i]} /></div>
-        <p className="sm" style={{ color: COL[i], fontWeight: 600, marginTop: 8 }}>{d[0]}</p><p className="mu sm">{d[2]}</p></div>)}</div></div>
-    <div className="card"><Ttl a="Topic mastery" b="How well you know each topic" />
-      {T.map((t, i) => <div key={t.n} className="row" style={{ margin: '8px 0' }}>
-        <div style={{ width: 110, lineHeight: 1.2 }}><b className="sm" style={{ color: COL[i] }}>{t.n}</b><p className="mu" style={{ fontSize: 11 }}>{t.src}</p></div>
-        <div style={{ flex: 1, height: 30, background: 'var(--hv)', ...AR }}><div style={{ width: `${t.m}%`, minWidth: 84, height: '100%', background: COL[i], position: 'relative', ...AR }}>
-          <span style={{ position: 'absolute', right: 0, top: 0, bottom: 0, padding: '0 20px 0 12px', background: DK[i], color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', ...AR }}>{t.m}%</span></div></div></div>)}</div>
-    <div className="card" style={{ overflowX: 'auto' }}><Ttl a="Assessment history" b="Attempts and latest score per topic" />
-      <div style={{ minWidth: 460, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4, textAlign: 'center' }}>
-        {['Topic', 'Mastery', 'Attempts', 'Last score'].map((x, i) => <div key={x} style={{ background: COL[i], color: '#fff', fontWeight: 600, padding: 8, ...AR }}>{x}</div>)}
-        {T.flatMap((t, i) => [<b key={t.n + 'a'} style={{ color: '#2f7f8c' }}>{t.n}</b>, `${t.m}%`, att[i], `${last[i]}%`].map((x, j) => <div key={t.n + j} style={{ background: 'var(--hv)', padding: '10px 4px', color: 'var(--mu)' }}>{x}</div>))}</div></div>
-    <div className="card"><Ttl a="Mastery by ring" b="Outer to inner: each ring is one topic" />
-      <div className="row" style={{ justifyContent: 'center', flexWrap: 'wrap', gap: 28 }}>
-        <svg width="240" height="240" viewBox="0 0 240 240">{T.map((t, i) => {
-          const r = R[i], C = 2 * Math.PI * r, a = t.m / 100 * 2 * Math.PI - Math.PI / 2; return (
-            <g key={t.n}><circle cx="120" cy="120" r={r} fill="none" stroke="var(--hv)" strokeWidth="17" />
-              <circle cx="120" cy="120" r={r} fill="none" stroke={COL[i]} strokeWidth="17" strokeDasharray={`${C * t.m / 100} ${C}`} transform="rotate(-90 120 120)" />
-              <text x={120 + r * Math.cos(a)} y={123 + r * Math.sin(a)} textAnchor="middle" fontSize="9" fontWeight="600" fill="#fff">{t.m}</text></g>)
-        })}</svg>
-        <div>{T.map((t, i) => <p key={t.n} className="row sm" style={{ padding: '4px 0' }}><i style={{ width: 12, height: 12, borderRadius: 3, background: COL[i] }} /><b>{t.n}</b><span className="mu">{t.m}%</span></p>)}</div></div></div>
-    {w[0] && <div className="card" style={{ background: 'var(--sb)' }}><p className="mu sm">Recommended for you</p><h3 style={{ margin: '4px 0 8px' }}>You struggled with {w[0].n} in your last assessment.</h3>
-      <p className="mu">Review {w[0].n}, then practice 5 questions.</p><a className="btn" style={{ marginTop: 12 }} href="#/app/assessments">Start practice</a></div>}
-    <div className="card"><h3>Weak topics</h3>{w.map(t => <div key={t.n} className="row" style={{ padding: '8px 0', borderBottom: '1px solid var(--bd)' }}><span className="sp">{t.n}</span><span className="tag">{t.m}%</span></div>)}</div>
-    <div className="card"><h3>Study plan · exam in 15 days</h3>{ctx.db.plan.map(p => <div key={p[0]} className="row" style={{ padding: '8px 0' }}><span style={{ width: 44 }} className="mu">{p[0]}</span><span className="sp">{p[1]}</span><span className="tag">{p[2]}</span></div>)}</div></div>);
+export function Progress(_props: { ctx: Ctx }) {
+  const [data, setData] = useState<Awaited<ReturnType<typeof api.progress>> | null>(null), [error, setError] = useState('');
+  useEffect(() => { api.progress().then(setData).catch(err => setError(err instanceof Error ? err.message : 'Could not load progress.')); }, []);
+  return <div className="page"><h2>Progress</h2>{error && <p role="alert" style={{ color: 'var(--rd)' }}>{error}</p>}{!data ? !error && <p className="mu">Loading progress…</p> : <>
+    <div className="card"><h3>Topic mastery</h3>{data.mastery.length ? data.mastery.map(item => <div key={item.topic} style={{ margin: '14px 0' }}><div className="row"><b className="sp">{item.topic}</b><span>{item.mastery}%</span><span className="mu sm">{item.attempts} answers</span></div><Bar v={item.mastery} w={item.mastery < 60} /></div>) : <p className="mu">Complete an assessment to begin a topic mastery estimate.</p>}</div>
+    <div className="card"><h3>Assessment history</h3>{data.assessments.length ? data.assessments.map(assessment => <div key={assessment.id} className="row" style={{ padding: '10px 0', borderBottom: '1px solid var(--bd)' }}><span className="sp">{new Date(assessment.createdAt).toLocaleString()} · {assessment.mode.replace('_', ' ')}</span><b>{assessment.score}/{assessment.total} · {assessment.accuracy}%</b></div>) : <div><p className="mu">No completed assessments yet. A short baseline diagnostic gives you an initial observed-performance estimate.</p><a className="btn" href="#/app/assessments">Start a baseline diagnostic</a></div>}</div>
+    {!!data.mastery.filter(item => item.mastery < 60).length && <div className="card"><h3>Topics to revisit</h3><p className="mu">Based on verified assessment answers: {data.mastery.filter(item => item.mastery < 60).map(item => item.topic).join(', ')}</p><a className="btn" href="#/app/assessments">Practice weak topics</a></div>}
+  </>}</div>;
 }
 
-export function CourseMap({ ctx }: { ctx: Ctx }) {
-  const [node, setNode] = useState('Normalization'), t = ctx.topics.find(x => x.n === node)!;
-  return (<div className="page"><h2>Course map</h2>
-    <div className="card row" style={{ flexWrap: 'wrap', justifyContent: 'center' }}>{ctx.topics.map((x, i) =>
-      <span key={x.n} className="row">{i > 0 && <span className="mu"><Icon n="down" s={16} /></span>}<button className={`node ${node === x.n ? 'on' : ''}`} onClick={() => setNode(x.n)}>{x.n}</button></span>)}</div>
-    <div className="card"><h3>{t.n}</h3><p className="mu" style={{ margin: '4px 0 10px' }}>Mastery {t.m}% · Prerequisites: {t.pre.join(', ') || 'none'}</p>
-      <p className="mu sm">Source: {t.src}</p>
-      <div className="row" style={{ marginTop: 12 }}><a className="btn" href="#/app/chat">Ask AI</a><a className="btn o" href="#/app/assessments">Practice</a></div></div></div>);
+export function CourseMap(_props: { ctx: Ctx }) {
+  const [data, setData] = useState<Awaited<ReturnType<typeof api.topicMap>> | null>(null), [error, setError] = useState('');
+  useEffect(() => { api.topicMap().then(setData).catch(err => setError(err instanceof Error ? err.message : 'Could not load course topics.')); }, []);
+  const nameById = new Map((data?.topics || []).map(topic => [topic.id, topic.name]));
+  return <div className="page"><h2>Course map</h2>{error && <p role="alert" style={{ color: 'var(--rd)' }}>{error}</p>}{!data ? !error && <p className="mu">Loading source-backed topics…</p> : data.topics.length ? <>
+    <p className="mu">Topics and relationships are extracted from your indexed sources. Each item links to evidence used to identify it.</p>
+    <div className="g">{data.topics.map(topic => <div className="card" key={topic.id}><div className="row"><h3 className="sp">{topic.name}</h3><span className="tag">{topic.kind}</span></div>{topic.description && <p className="mu">{topic.description}</p>}
+      {data.relations.filter(relation => relation.fromId === topic.id).map(relation => <p className="mu sm" key={`${relation.documentId}-${relation.toId}`}>{relation.type === 'prerequisite' ? 'Prerequisite' : 'Subtopic'}: <b>{nameById.get(relation.toId) || 'Unknown topic'}</b> — {relation.evidence} · <a href={api.sourceUrl(relation.documentId, relation.locationNumber, relation.locationType === 'slide' ? 'pptx' : relation.locationType === 'time' ? 'video' : 'pdf')} target="_blank" rel="noreferrer">{relation.source} {relation.locationType} {relation.locationNumber}</a></p>)}
+      <p className="mu sm">Associated source chunks: {topic.chunks.length}</p>
+      {topic.sources.map((source, i) => <p className="mu sm" key={`${source.documentId}-${source.locationType}-${source.locationNumber}-${i}`}><a href={api.sourceUrl(source.documentId, source.locationNumber, source.locationType === 'slide' ? 'pptx' : source.locationType === 'time' ? 'video' : 'pdf')} target="_blank" rel="noreferrer">{source.source} · {source.locationType} {source.locationNumber}</a><br />Evidence: “{source.evidence}”</p>)}
+    </div>)}</div>
+  </> : <div className="card"><h3>No indexed topics yet</h3><p className="mu">Upload supported course material to extract a source-backed topic map.</p><a className="btn" href="#/app/library">View library</a></div>}</div>;
 }
 
 export function Settings({ ctx }: { ctx: Ctx }) {
-  return (<div className="page"><h2>Settings</h2><div className="card g">
-    <label>Name<input className="t" defaultValue={ctx.db.user} /></label>
-    <label className="row"><input type="checkbox" checked={ctx.dark} onChange={e => ctx.setDark(e.target.checked)} /> Dark appearance</label>
-    <button className="btn" style={{ width: 'fit-content' }} onClick={() => ctx.toast('Saved')}>Save changes</button></div></div>);
+  return <div className="page"><h2>Settings</h2><div className="card g"><label className="row"><input type="checkbox" checked={ctx.dark} onChange={e => ctx.setDark(e.target.checked)} /> Dark appearance</label><p className="mu sm">Theme preference applies to this session. Accounts and saved preferences are not configured.</p></div></div>;
 }

@@ -1,11 +1,10 @@
 const { PDFParse } = require("pdf-parse");
 const fs = require("fs");
-const { randomUUID } = require("crypto");
-const { createChunks } = require("../utils/createChunks");
-const { createEmbedding } = require("./geminiService");
-const { storePoints } = require("./qdrantService");
+const { buildPdfChunks } = require("../utils/buildPdfChunks");
+const { indexChunks } = require("./indexChunksService");
+const { analyzePdfPages } = require("./geminiService");
 
-async function processPDF(filePath, sourceName = "Uploaded PDF") {
+async function processPDF(filePath, sourceName = "Uploaded PDF", { documentId, ownerId } = {}) {
     let parser;
     try {
         const dataBuffer = fs.readFileSync(filePath);
@@ -14,47 +13,24 @@ async function processPDF(filePath, sourceName = "Uploaded PDF") {
         }
         parser = new PDFParse({ data: dataBuffer });
         const pdfData = await parser.getText();
-        const text = pdfData.text?.trim();
-        if (!text) {
-            return {
-                success: false,
-                type: "NO_TEXT",
-                message: "PDF was opened successfully, but no extractable text was found. It may be a scanned/image-based PDF and require OCR."
-            };
-        }
-        const chunks = pdfData.pages.flatMap(page =>
-            createChunks(page.text).map((chunk, chunkIndex) => ({
-                text: chunk,
-                pageNumber: page.num,
-                chunkIndex
-            }))
-        );
+        if (pdfData.total > 500) return { success: false, type: "PAGE_LIMIT", message: "PDFs are limited to 500 pages." };
+        const text = pdfData.text?.trim() || "";
+        const visualPages = await analyzePdfPages(filePath, pdfData.total);
+        const chunks = buildPdfChunks(pdfData.pages || [], visualPages);
         if (chunks.length === 0) {
-            return { success: false, type: "NO_CHUNKS", message: "Text was extracted but no chunks could be created." };
+            return { success: false, type: text ? "NO_CHUNKS" : "NO_TEXT", message: "No selectable or visually extractable course text was found in this PDF." };
         }
+        if (chunks.length > 1000) return { success: false, type: "CHUNK_LIMIT", message: "This PDF contains too much extractable text. Split it into smaller files." };
 
-        const points = [];
-        const documentId = randomUUID();
-        for (let i = 0; i < chunks.length; i++) {
-            const chunk = chunks[i];
-            const embedding = await createEmbedding(chunk.text);
-            points.push({
-                id: randomUUID(),
-                vector: embedding,
-                payload: {
-                    text: chunk.text,
-                    chunkIndex: chunk.chunkIndex,
-                    pageNumber: chunk.pageNumber,
-                    documentId,
-                    source: sourceName
-                }
-            });
-        }
-        await storePoints(points);
-        return { success: true, type: "TEXT", pages: pdfData.total, totalChunks: chunks.length, documentId };
+        const indexed = await indexChunks({ chunks, sourceName, sourceType: "pdf", documentId, ownerId });
+        return { ...indexed, type: text ? "MULTIMODAL" : "OCR", pages: pdfData.total };
     } catch (error) {
-        console.error("PDF processing failed:", error);
-        return { success: false, type: "PDF_PARSE_ERROR", message: error.message || "Failed to process PDF." };
+        console.error("PDF processing failed:", error.message);
+        return {
+            success: false,
+            type: error.code || "PDF_PARSE_ERROR",
+            message: error.code ? error.message : "The PDF could not be processed. Check that it is valid and contains extractable text."
+        };
     } finally {
         if (parser) {
             try {

@@ -1,6 +1,15 @@
 {
-  "dependencies": {
-    "express": "^5.2.1",
-    "multer": "^2.4.0"
+  "name": "learniq",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "./Front-End",
+    "./server"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=sigma-phase1",
+    "start": "npm run start --workspace=server",
+    "build": "npm run build --workspace=sigma-phase1",
+    "test": "npm test --workspace=server"
   }
 }

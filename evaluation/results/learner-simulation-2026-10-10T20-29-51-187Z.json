@@ -1,0 +1,236 @@
+{
+  "simulationId": "learniq-assessment-model-simulation",
+  "simulationVersion": "1.0.0",
+  "startedAt": "2026-10-10T20:29:51.164Z",
+  "completedAt": "2026-10-10T20:29:51.186Z",
+  "learnerCount": 3,
+  "sessionsPerLearner": 3,
+  "execution": "Actual LearnIQ generateQuiz, submitQuiz, and SQLite learner-model code; deterministic Gemini and Qdrant boundary responses; in-memory SQLite.",
+  "profiles": [
+    {
+      "profile": "simulated-novice",
+      "startingEvidence": "0/4 deterministic baseline answers",
+      "initialTopicEstimate": {
+        "topic": "Algebra",
+        "masteryPercent": 17,
+        "attempts": 4
+      },
+      "sessions": [
+        {
+          "session": 1,
+          "assessmentScore": 1,
+          "assessmentTotal": 5,
+          "observedAccuracy": 20,
+          "difficultySelected": "easy",
+          "difficultyMatchesObservedEvidence": true,
+          "recommendationReason": "Starting at easy based on 4 graded answer(s) and 0% observed accuracy for the selected weak topics.",
+          "recommendedPracticeTopics": [
+            "Algebra"
+          ],
+          "recommendationValid": true,
+          "weakTopics": [
+            "Algebra"
+          ],
+          "masteryEstimateAfter": 18,
+          "duplicateSubmissionRejected": true
+        },
+        {
+          "session": 2,
+          "assessmentScore": 2,
+          "assessmentTotal": 5,
+          "observedAccuracy": 40,
+          "difficultySelected": "easy",
+          "difficultyMatchesObservedEvidence": true,
+          "recommendationReason": "Starting at easy based on 9 graded answer(s) and 11% observed accuracy for the selected weak topics.",
+          "recommendedPracticeTopics": [
+            "Algebra"
+          ],
+          "recommendationValid": true,
+          "weakTopics": [
+            "Algebra"
+          ],
+          "masteryEstimateAfter": 25,
+          "duplicateSubmissionRejected": true
+        },
+        {
+          "session": 3,
+          "assessmentScore": 3,
+          "assessmentTotal": 5,
+          "observedAccuracy": 60,
+          "difficultySelected": "easy",
+          "difficultyMatchesObservedEvidence": true,
+          "recommendationReason": "Starting at easy based on 14 graded answer(s) and 21% observed accuracy for the selected weak topics.",
+          "recommendedPracticeTopics": [
+            "Algebra"
+          ],
+          "recommendationValid": true,
+          "weakTopics": [],
+          "masteryEstimateAfter": 33,
+          "duplicateSubmissionRejected": true
+        }
+      ],
+      "finalTopicEstimate": {
+        "topic": "Algebra",
+        "alpha": 7,
+        "beta": 14,
+        "attempts": 19,
+        "updatedAt": "2026-10-10T20:29:51.176Z",
+        "mastery": 33
+      },
+      "questionCount": 15,
+      "exactQuestionRepeatRate": 0,
+      "semanticQuestionRepeatRate": null,
+      "duplicateEventProtection": true
+    },
+    {
+      "profile": "simulated-developing",
+      "startingEvidence": "2/4 deterministic baseline answers",
+      "initialTopicEstimate": {
+        "topic": "Algebra",
+        "masteryPercent": 50,
+        "attempts": 4
+      },
+      "sessions": [
+        {
+          "session": 1,
+          "assessmentScore": 3,
+          "assessmentTotal": 5,
+          "observedAccuracy": 60,
+          "difficultySelected": "medium",
+          "difficultyMatchesObservedEvidence": true,
+          "recommendationReason": "Starting at medium based on 4 graded answer(s) and 50% observed accuracy for the selected weak topics.",
+          "recommendedPracticeTopics": [
+            "Algebra"
+          ],
+          "recommendationValid": true,
+          "weakTopics": [],
+          "masteryEstimateAfter": 55,
+          "duplicateSubmissionRejected": true
+        },
+        {
+          "session": 2,
+          "assessmentScore": 4,
+          "assessmentTotal": 5,
+          "observedAccuracy": 80,
+          "difficultySelected": "medium",
+          "difficultyMatchesObservedEvidence": true,
+          "recommendationReason": "Starting at medium based on 9 graded answer(s) and 56% observed accuracy for the selected weak topics.",
+          "recommendedPracticeTopics": [
+            "Algebra"
+          ],
+          "recommendationValid": true,
+          "weakTopics": [],
+          "masteryEstimateAfter": 63,
+          "duplicateSubmissionRejected": true
+        },
+        {
+          "session": 3,
+          "assessmentScore": 4,
+          "assessmentTotal": 5,
+          "observedAccuracy": 80,
+          "difficultySelected": "medium",
+          "difficultyMatchesObservedEvidence": true,
+          "recommendationReason": "Starting at medium based on 14 graded answer(s) and 64% observed accuracy for all tracked topics.",
+          "recommendedPracticeTopics": [],
+          "recommendationValid": true,
+          "weakTopics": [],
+          "masteryEstimateAfter": 67,
+          "duplicateSubmissionRejected": true
+        }
+      ],
+      "finalTopicEstimate": {
+        "topic": "Algebra",
+        "alpha": 14,
+        "beta": 7,
+        "attempts": 19,
+        "updatedAt": "2026-10-10T20:29:51.180Z",
+        "mastery": 67
+      },
+      "questionCount": 15,
+      "exactQuestionRepeatRate": 0,
+      "semanticQuestionRepeatRate": null,
+      "duplicateEventProtection": true
+    },
+    {
+      "profile": "simulated-advanced",
+      "startingEvidence": "4/4 deterministic baseline answers",
+      "initialTopicEstimate": {
+        "topic": "Algebra",
+        "masteryPercent": 83,
+        "attempts": 4
+      },
+      "sessions": [
+        {
+          "session": 1,
+          "assessmentScore": 5,
+          "assessmentTotal": 5,
+          "observedAccuracy": 100,
+          "difficultySelected": "hard",
+          "difficultyMatchesObservedEvidence": true,
+          "recommendationReason": "Starting at hard based on 4 graded answer(s) and 100% observed accuracy for all tracked topics.",
+          "recommendedPracticeTopics": [],
+          "recommendationValid": true,
+          "weakTopics": [],
+          "masteryEstimateAfter": 91,
+          "duplicateSubmissionRejected": true
+        },
+        {
+          "session": 2,
+          "assessmentScore": 5,
+          "assessmentTotal": 5,
+          "observedAccuracy": 100,
+          "difficultySelected": "hard",
+          "difficultyMatchesObservedEvidence": true,
+          "recommendationReason": "Starting at hard based on 9 graded answer(s) and 100% observed accuracy for all tracked topics.",
+          "recommendedPracticeTopics": [],
+          "recommendationValid": true,
+          "weakTopics": [],
+          "masteryEstimateAfter": 94,
+          "duplicateSubmissionRejected": true
+        },
+        {
+          "session": 3,
+          "assessmentScore": 5,
+          "assessmentTotal": 5,
+          "observedAccuracy": 100,
+          "difficultySelected": "hard",
+          "difficultyMatchesObservedEvidence": true,
+          "recommendationReason": "Starting at hard based on 14 graded answer(s) and 100% observed accuracy for all tracked topics.",
+          "recommendedPracticeTopics": [],
+          "recommendationValid": true,
+          "weakTopics": [],
+          "masteryEstimateAfter": 95,
+          "duplicateSubmissionRejected": true
+        }
+      ],
+      "finalTopicEstimate": {
+        "topic": "Algebra",
+        "alpha": 20,
+        "beta": 1,
+        "attempts": 19,
+        "updatedAt": "2026-10-10T20:29:51.185Z",
+        "mastery": 95
+      },
+      "questionCount": 15,
+      "exactQuestionRepeatRate": 0,
+      "semanticQuestionRepeatRate": null,
+      "duplicateEventProtection": true
+    }
+  ],
+  "crossLearnerIsolation": true,
+  "aggregate": {
+    "totalPracticeSessions": 9,
+    "meanStartingEstimate": 50,
+    "meanFinalEstimate": 65,
+    "duplicateEventProtectionPass": true,
+    "invalidRecommendationCount": 0,
+    "exactQuestionRepeatRate": 0,
+    "semanticQuestionRepeatRate": null
+  },
+  "limitations": [
+    "This deterministic simulation is not a live-provider experiment or a real learner outcome.",
+    "Question generation, verification, semantic novelty judgments, and retrieval are mocked at provider boundaries.",
+    "Semantic paraphrase repeat rate is null because no live evaluator or manually labeled paraphrase set was used.",
+    "Mastery values are observed correctness estimates, not learning gains or retention measures."
+  ]
+}
