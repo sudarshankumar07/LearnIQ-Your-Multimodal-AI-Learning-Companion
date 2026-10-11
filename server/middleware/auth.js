@@ -20,11 +20,39 @@ function authenticate(req, res, next) {
     req.sessionTokenHash = sessionHash(token);
     next();
 }
+function getAllowedOrigins() {
+    return (process.env.APP_ORIGINS || "http://localhost:5173,http://127.0.0.1:5173")
+        .split(",")
+        .map(value => value.trim().replace(/\/+$/, ""))
+        .filter(Boolean);
+}
+
 function verifyBrowserOrigin(req, res, next) {
-    const origin = req.get("origin");
+    const origin = typeof req.get === "function" ? req.get("origin") : (req.headers && req.headers.origin);
     if (!origin) return next();
-    const configured = (process.env.APP_ORIGINS || "http://localhost:5173,http://127.0.0.1:5173").split(",").map(value => value.trim()).filter(Boolean);
-    if (!configured.includes(origin)) return res.status(403).json({ message: "Request origin is not allowed." });
+    const normalizedOrigin = String(origin).trim().replace(/\/+$/, "");
+    const configured = getAllowedOrigins();
+    if (!configured.includes(normalizedOrigin)) {
+        return res.status(403).json({ message: "Request origin is not allowed." });
+    }
+
+    if (typeof res.setHeader === "function") {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+        res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept");
+        res.setHeader("Access-Control-Max-Age", "86400");
+        res.setHeader("Vary", "Origin");
+    }
+
+    if (req.method === "OPTIONS") {
+        if (typeof res.sendStatus === "function") return res.sendStatus(204);
+        if (typeof res.status === "function") {
+            res.status(204);
+            if (typeof res.end === "function") return res.end();
+            return;
+        }
+    }
     next();
 }
-module.exports = { authenticate, verifyBrowserOrigin, readCookie, sessionHash, COOKIE };
+module.exports = { authenticate, verifyBrowserOrigin, readCookie, sessionHash, COOKIE, getAllowedOrigins };

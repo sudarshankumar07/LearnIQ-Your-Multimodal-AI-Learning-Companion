@@ -8,13 +8,19 @@ const SESSION_MS = 7 * 24 * 60 * 60 * 1000;
 async function derivePassword(password, salt) {
     return scryptAsync(password, salt, 64, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
 }
+function getCookieOptions() {
+    const isProd = process.env.NODE_ENV === "production";
+    const sameSite = process.env.COOKIE_SAMESITE || (isProd ? "None" : "Strict");
+    const secure = (isProd || sameSite === "None") ? "; Secure; Partitioned" : "";
+    return { sameSite, secure };
+}
 function setSessionCookie(res, token) {
-    const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-    res.setHeader("Set-Cookie", `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_MS / 1000}${secure}`);
+    const { sameSite, secure } = getCookieOptions();
+    res.setHeader("Set-Cookie", `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=${SESSION_MS / 1000}${secure}`);
 }
 function clearSessionCookie(res) {
-    const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-    res.setHeader("Set-Cookie", `${COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`);
+    const { sameSite, secure } = getCookieOptions();
+    res.setHeader("Set-Cookie", `${COOKIE}=; Path=/; HttpOnly; SameSite=${sameSite}; Max-Age=0${secure}`);
 }
 async function createSession(res, user) {
     const token = randomBytes(32).toString("hex");

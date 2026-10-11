@@ -1,15 +1,50 @@
 export class ApiError extends Error { constructor(message: string, readonly status: number) { super(message); } }
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
+
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL;
+export const API_BASE_URL = typeof rawBaseUrl === 'string' ? rawBaseUrl.trim().replace(/\/+$/, '') : '';
+
+if (import.meta.env.PROD && !API_BASE_URL) {
+  console.warn('[LearnIQ] VITE_API_BASE_URL is not set. API requests will target the frontend origin.');
+}
+
+export function buildApiUrl(path: string): string {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  if (!API_BASE_URL) return cleanPath;
+  return `${API_BASE_URL}${cleanPath}`;
+}
+
+async function request<T>(endpoint: string, init?: RequestInit): Promise<T> {
+  const url = buildApiUrl(endpoint);
   let response: Response;
-  try { response = await fetch(url, init); }
-  catch { throw new Error('Unable to reach the learning server. Check that it is running and try again.'); }
+  try {
+    response = await fetch(url, {
+      credentials: 'include',
+      ...init,
+      headers: init?.headers,
+    });
+  } catch {
+    if (import.meta.env.PROD && !API_BASE_URL) {
+      throw new Error('Unable to reach the learning server. VITE_API_BASE_URL is not configured.');
+    }
+    throw new Error('Unable to reach the learning server. Check that it is running and try again.');
+  }
   if (!response.ok) {
     const body = await response.text();
     let message = `Request failed (${response.status}).`;
-    try { message = (JSON.parse(body) as { message?: string }).message || message; } catch { /* Keep server error bodies private. */ }
+    try {
+      const parsed = JSON.parse(body) as { message?: string };
+      if (parsed && typeof parsed.message === 'string' && parsed.message.trim()) {
+        message = parsed.message;
+      }
+    } catch { /* Keep server error bodies private. */ }
     throw new ApiError(message, response.status);
   }
-  return response.json() as Promise<T>;
+  if (response.status === 204) return {} as T;
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw new Error('Invalid response received from the learning server.');
+  }
 }
 
 export interface Source { id: number; documentId: string; name: string; sourceType: string; locationType: 'page' | 'slide' | 'time'; locationNumber: number }
@@ -29,9 +64,10 @@ export const api = {
   deleteDocument: (id: string) => request<{ success: boolean }>(`/upload/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   sourceUrl: (id: string, location: number, sourceType = 'pdf') => {
     const key = sourceType === 'video' ? 'time' : sourceType === 'pptx' ? 'slide' : 'page';
-    return sourceType === 'video' ? `/upload/${encodeURIComponent(id)}/source?${key}=${location}#t=${location}` : `/upload/${encodeURIComponent(id)}/source?${key}=${location}#${key}=${location}`;
+    const fragment = sourceType === 'video' ? `#t=${location}` : `#${key}=${location}`;
+    return buildApiUrl(`/upload/${encodeURIComponent(id)}/source?${key}=${location}${fragment}`);
   },
-  sourceFileUrl: (id: string) => `/upload/${encodeURIComponent(id)}/file`,
+  sourceFileUrl: (id: string) => buildApiUrl(`/upload/${encodeURIComponent(id)}/file`),
   progress: () => request<ProgressData>('/progress'),
   topicMap: () => request<TopicMapData>('/progress/topics'),
   ask: (query: string, language: 'en' | 'hi' | 'hn') => request<{ answer: string; sources: Source[] }>('/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, language }) }),

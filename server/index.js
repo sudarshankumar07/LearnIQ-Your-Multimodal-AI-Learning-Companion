@@ -14,13 +14,17 @@ const { authenticate, verifyBrowserOrigin } = require("./middleware/auth");
 const app = express();
 const port = 3000;
 
+app.use(verifyBrowserOrigin);
 app.use(methodOverride("_method"));
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json({ limit: "32kb" }));
 app.use(express.urlencoded({ extended: true }));
-app.use(verifyBrowserOrigin);
+
+app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/", (_req, res) => res.json({ name: "LearnIQ API", status: "ok", message: "LearnIQ API server is online." }));
+
 app.use("/auth", rateLimit({ windowMs: 60_000, max: 10 }), authRoutes);
 app.post("/upload", rateLimit({ windowMs: 60_000, max: 5 }), authenticate, uploadRoutes);
 app.use("/upload", authenticate, uploadRoutes);
@@ -28,16 +32,27 @@ app.use("/ask", rateLimit({ windowMs: 60_000, max: 20 }), authenticate, ragRoute
 app.use("/quiz", rateLimit({ windowMs: 60_000, max: 10 }), authenticate, quizRoutes);
 app.use("/progress", authenticate, progressRoutes);
 
-app.get("/", (req, res) => res.send("nothing......"));
+app.use((_req, res) => {
+    res.status(404).json({ message: "Route not found." });
+});
 
 app.use((err, _req, res, _next) => {
     if (err instanceof require("multer").MulterError) return res.status(err.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({ message: "Upload one supported PDF, PPTX, MP4, MOV, or WebM file. Video files are limited to 100 MB; PDF and PPTX files are limited to 20 MB." });
-    console.error("Unhandled request error:", err.message);
-    return res.status(500).json({ message: "Request failed." });
+    const status = Number.isInteger(err?.status) && err.status >= 400 && err.status < 600 ? err.status : 500;
+    console.error("Unhandled request error:", err?.message || err);
+    return res.status(status).json({ message: status === 400 ? "Invalid request format." : "Request failed." });
 });
+
 (async () => {
-    await setupQdrant();
-    app.listen(Number(process.env.PORT) || port, () => {
-        console.log(`server is online on port ${Number(process.env.PORT) || port}`);
+    try {
+        await setupQdrant();
+    } catch (error) {
+        console.error("Qdrant setup warning on startup:", error?.message || error);
+    }
+    const serverPort = Number(process.env.PORT) || port;
+    app.listen(serverPort, () => {
+        console.log(`server is online on port ${serverPort}`);
     });
 })();
+
+module.exports = app;
