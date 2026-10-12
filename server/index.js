@@ -10,7 +10,6 @@ const authRoutes = require("./routes/authRoutes");
 const progressRoutes = require("./routes/progressRoutes");
 const rateLimit = require("./utils/rateLimit");
 const { authenticate, verifyBrowserOrigin } = require("./middleware/auth");
-const store = require("./services/dataStore");
 
 const app = express();
 const port = 3000;
@@ -44,53 +43,16 @@ app.use((err, _req, res, _next) => {
     return res.status(status).json({ message: status === 400 ? "Invalid request format." : "Request failed." });
 });
 
-let server;
-
-async function startServer() {
-    try {
-        await store.initDatabase();
-    } catch (error) {
-        console.error("Database initialization failed:", error?.message || error);
-        if (process.env.NODE_ENV === "production") {
-            process.exit(1);
-        }
-    }
+(async () => {
     try {
         await setupQdrant();
     } catch (error) {
         console.error("Qdrant setup warning on startup:", error?.message || error);
     }
     const serverPort = Number(process.env.PORT) || port;
-    server = app.listen(serverPort, () => {
+    app.listen(serverPort, () => {
         console.log(`server is online on port ${serverPort}`);
     });
-    return server;
-}
-
-async function gracefulShutdown(signal) {
-    console.log(`Received ${signal}, starting graceful shutdown...`);
-    if (server) {
-        server.close(async () => {
-            try {
-                await store.closeDatabase();
-            } catch (err) {
-                console.error("Error closing database during shutdown:", err?.message || err);
-            }
-            process.exit(0);
-        });
-        setTimeout(() => {
-            console.error("Forced shutdown due to timeout.");
-            process.exit(1);
-        }, 10000).unref();
-    } else {
-        await store.closeDatabase().catch(() => {});
-        process.exit(0);
-    }
-}
-
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-
-startServer();
+})();
 
 module.exports = app;

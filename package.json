@@ -9,7 +9,6 @@
   "scripts": {
     "dev": "npm run dev --workspace=sigma-phase1",
     "start": "npm run start --workspace=server",
-    "migrate:sqlite": "npm run migrate:sqlite --workspace=server",
     "build": "npm run build --workspace=sigma-phase1",
     "test": "npm test --workspace=server"
   }

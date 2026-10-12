@@ -24,9 +24,9 @@ function clearSessionCookie(res) {
 }
 async function createSession(res, user) {
     const token = randomBytes(32).toString("hex");
-    await store.saveSession(sessionHash(token), user.id, Date.now() + SESSION_MS);
+    store.saveSession(sessionHash(token), user.id, Date.now() + SESSION_MS);
     setSessionCookie(res, token);
-    return { id: user.id, email: user.email, token };
+    return { id: user.id, email: user.email };
 }
 function validCredentials(email, password) {
     return typeof email === "string" && email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && typeof password === "string" && password.length >= 12 && password.length <= 128;
@@ -39,10 +39,10 @@ async function register(req, res) {
     try {
         const passwordHash = (await derivePassword(password, salt)).toString("hex");
         const user = { id: randomUUID(), email: normalizedEmail };
-        await store.createUser({ ...user, salt, passwordHash });
+        store.createUser({ ...user, salt, passwordHash });
         return res.status(201).json({ user: await createSession(res, user) });
     } catch (error) {
-        if (String(error.code).startsWith("SQLITE_CONSTRAINT") || error.code === "23505") return res.status(409).json({ message: "An account with that email already exists." });
+        if (String(error.code).startsWith("SQLITE_CONSTRAINT")) return res.status(409).json({ message: "An account with that email already exists." });
         console.error("Account creation failed:", error.message);
         return res.status(500).json({ message: "Could not create the account." });
     }
@@ -51,7 +51,7 @@ async function login(req, res) {
     const { email, password } = req.body || {};
     if (typeof email !== "string" || email.length > 254 || typeof password !== "string" || password.length > 128) return res.status(400).json({ message: "Enter your email and password." });
     try {
-        const user = await store.findUserByEmail(email.trim().toLowerCase());
+        const user = store.findUserByEmail(email.trim().toLowerCase());
         const salt = user?.salt || "00000000000000000000000000000000";
         const actualHash = await derivePassword(password, salt);
         const expectedHash = user ? Buffer.from(user.passwordHash, "hex") : Buffer.alloc(64);
@@ -63,11 +63,10 @@ async function login(req, res) {
     }
 }
 function me(req, res) { res.json({ user: req.user }); }
-async function logout(req, res) {
-    const token = readCookie(req.headers?.cookie) || (req.headers?.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7).trim() : null);
-    if (token) await store.deleteSession(createHash("sha256").update(token).digest("hex"));
+function logout(req, res) {
+    const token = readCookie(req.headers.cookie);
+    if (token) store.deleteSession(createHash("sha256").update(token).digest("hex"));
     clearSessionCookie(res);
     return res.json({ success: true });
 }
 module.exports = { register, login, me, logout };
-

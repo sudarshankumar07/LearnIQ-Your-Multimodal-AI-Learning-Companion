@@ -5,7 +5,6 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "migrate:sqlite": "node scripts/migrateSqliteToPostgres.js",
     "test": "node --test"
   },
   "keywords": [],
@@ -13,13 +12,12 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "express": "^5.2.1",
     "@google/genai": "^2.27.0",
     "@qdrant/js-client-rest": "^1.19.0",
     "dotenv": "^18.0.5",
-    "express": "^5.2.1",
     "method-override": "^3.0.0",
     "multer": "^2.4.0",
-    "pdf-parse": "^2.4.5",
-    "pg": "^8.23.1"
+    "pdf-parse": "^2.4.5"
   }
 }
