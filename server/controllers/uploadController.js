@@ -40,15 +40,15 @@ async function uploadPDF(req, res) {
                 ? await processPptx(storagePath, title, { documentId, ownerId: req.user.id })
                 : await processVideo(storagePath, title, { ".mp4": "video/mp4", ".mov": "video/quicktime", ".webm": "video/webm" }[extension], { documentId, ownerId: req.user.id });
         if (!result.success) return res.status(400).json(result);
-        store.createDocument({ id: documentId, userId: req.user.id, title, storagePath, pages: result.pages, sourceType: result.sourceType, sourceUnits: result.sourceUnits });
-        store.persistTaxonomy(req.user.id, documentId, result.taxonomy);
+        await store.createDocument({ id: documentId, userId: req.user.id, title, storagePath, pages: result.pages, sourceType: result.sourceType, sourceUnits: result.sourceUnits });
+        await store.persistTaxonomy(req.user.id, documentId, result.taxonomy);
         retainSource = true;
         const { taxonomy: _taxonomy, sourceUnits: _sourceUnits, ...uploadResponse } = result;
         return res.status(200).json(uploadResponse);
     } catch (err) {
         if (documentId) {
             await deleteDocument(documentId, req.user.id).catch(() => {});
-            try { store.deleteDocument(req.user.id, documentId); }
+            try { await store.deleteDocument(req.user.id, documentId); }
             catch (cleanupError) { console.error("Upload metadata cleanup failed:", cleanupError.message); }
         }
         console.error("Material upload failed:", err.message);

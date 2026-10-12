@@ -10,15 +10,29 @@ function readCookie(header = "", name = COOKIE) {
     }
     return null;
 }
+function readToken(req) {
+    const cookieToken = readCookie(req.headers?.cookie);
+    if (cookieToken && /^[a-f0-9]{64}$/i.test(cookieToken)) return cookieToken;
+    const authHeader = req.headers?.authorization || (typeof req.get === "function" ? req.get("authorization") : null);
+    if (authHeader && /^Bearer\s+[a-f0-9]{64}$/i.test(authHeader.trim())) {
+        return authHeader.trim().slice(7).trim();
+    }
+    return null;
+}
 function sessionHash(token) { return createHash("sha256").update(token).digest("hex"); }
-function authenticate(req, res, next) {
-    const token = readCookie(req.headers.cookie);
-    if (!token || !/^[a-f0-9]{64}$/i.test(token)) return res.status(401).json({ message: "Sign in to continue." });
-    const user = store.findSession(sessionHash(token));
-    if (!user) return res.status(401).json({ message: "Your session expired. Sign in again." });
-    req.user = user;
-    req.sessionTokenHash = sessionHash(token);
-    next();
+async function authenticate(req, res, next) {
+    const token = readToken(req);
+    if (!token) return res.status(401).json({ message: "Sign in to continue." });
+    try {
+        const user = await store.findSession(sessionHash(token));
+        if (!user) return res.status(401).json({ message: "Your session expired. Sign in again." });
+        req.user = user;
+        req.sessionTokenHash = sessionHash(token);
+        next();
+    } catch (err) {
+        console.error("Session lookup error:", err.message);
+        return res.status(500).json({ message: "Authentication service unavailable." });
+    }
 }
 function getAllowedOrigins() {
     return (process.env.APP_ORIGINS || "http://localhost:5173,http://127.0.0.1:5173")
@@ -55,4 +69,4 @@ function verifyBrowserOrigin(req, res, next) {
     }
     next();
 }
-module.exports = { authenticate, verifyBrowserOrigin, readCookie, sessionHash, COOKIE, getAllowedOrigins };
+module.exports = { authenticate, verifyBrowserOrigin, readCookie, readToken, sessionHash, COOKIE, getAllowedOrigins };

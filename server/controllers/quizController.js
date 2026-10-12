@@ -8,7 +8,7 @@ async function generateQuiz(req, res) {
         return res.status(400).json({ message: "Choose a topic (or all topics), 1–10 questions, a valid difficulty, and a valid question type." });
     }
     try {
-        if (documentId && !store.getDocument(req.user.id, documentId)) return res.status(404).json({ message: "The selected document was not found." });
+        if (documentId && !(await store.getDocument(req.user.id, documentId))) return res.status(404).json({ message: "The selected document was not found." });
         return res.json(await quizService.generateQuiz({ userId: req.user.id, topic, count: questionCount, difficulty, type, mode, documentId }));
     } catch (err) {
         if (!err.status) console.error("Quiz generation failed:", err.message);

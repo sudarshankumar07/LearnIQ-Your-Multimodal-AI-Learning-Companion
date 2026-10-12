@@ -8,8 +8,16 @@ const { unlink } = require("fs/promises");
 const { uploadPDF } = require("../controllers/uploadController");
 
 const router = express.Router();
-const uploadDir = path.join(__dirname, "..", "uploads");
+const uploadDir = process.env.LEARNIQ_UPLOADS_DIR || path.join(__dirname, "..", "uploads");
 fs.mkdirSync(uploadDir, { recursive: true });
+
+function resolveFilePath(storagePath) {
+    if (fs.existsSync(storagePath)) return storagePath;
+    const fallbackPath = path.join(uploadDir, path.basename(storagePath));
+    if (fs.existsSync(fallbackPath)) return fallbackPath;
+    return null;
+}
+
 const acceptedTypes = {
     ".pdf": ["application/pdf", "application/octet-stream", ""],
     ".pptx": ["application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/zip", "application/octet-stream", ""],
@@ -31,13 +39,13 @@ const upload = multer({
 
 router.post("/", upload.single("material"), uploadPDF);
 router.get("/", async (_req, res) => {
-    try { res.json({ documents: store.listDocuments(_req.user.id) }); }
+    try { res.json({ documents: await store.listDocuments(_req.user.id) }); }
     catch (err) { console.error("Document listing failed:", err.message); res.status(503).json({ message: "Could not load indexed documents." }); }
 });
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]); }
-router.get("/:documentId/source", (req, res) => {
+router.get("/:documentId/source", async (req, res) => {
     if (!/^[0-9a-f-]{36}$/i.test(req.params.documentId)) return res.status(404).json({ message: "Document not found." });
-    const document = store.getDocument(req.user.id, req.params.documentId);
+    const document = await store.getDocument(req.user.id, req.params.documentId);
     if (!document) return res.status(404).json({ message: "Document not found." });
     const isVideo = document.sourceType === "video";
     const isSlide = document.sourceType === "pptx";
@@ -47,38 +55,47 @@ router.get("/:documentId/source", (req, res) => {
     if (isVideo && Number.isInteger(location) && location >= 0 && location <= document.pages) return res.redirect(302, `/upload/${document.id}/file#t=${location}`);
     if (!Number.isInteger(location) || location < 1 || location > document.pages) return res.status(400).json({ message: `Choose a valid ${locationType} number.` });
     if (isSlide) {
-        const unit = store.getSourceUnit(req.user.id, document.id, "slide", location);
+        const unit = await store.getSourceUnit(req.user.id, document.id, "slide", location);
         if (!unit) return res.status(404).json({ message: "No extractable text is available for this slide." });
         res.set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");
         res.set("X-Content-Type-Options", "nosniff");
         return res.type("html").send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escapeHtml(document.title)} - Slide ${location}</title><style>body{font:16px system-ui;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.6}pre{white-space:pre-wrap;font:inherit}</style></head><body><h1>${escapeHtml(document.title)}</h1><h2>Slide ${location}</h2><pre>${escapeHtml(unit.content)}</pre><p><a href="/upload/${document.id}/file">Download original presentation</a></p></body></html>`);
     }
+    const filePath = resolveFilePath(document.storagePath);
+    if (!filePath) {
+        return res.status(404).json({ message: "Original file is not available on this server. Please re-upload the document." });
+    }
     res.type("application/pdf");
     res.setHeader("Content-Disposition", `inline; filename="${req.params.documentId}.pdf"`);
     res.set("X-Content-Type-Options", "nosniff");
-    return res.sendFile(document.storagePath);
+    return res.sendFile(filePath);
 });
-router.get("/:documentId/file", (req, res) => {
+router.get("/:documentId/file", async (req, res) => {
     if (!/^[0-9a-f-]{36}$/i.test(req.params.documentId)) return res.status(404).json({ message: "Document not found." });
-    const document = store.getDocument(req.user.id, req.params.documentId);
+    const document = await store.getDocument(req.user.id, req.params.documentId);
     if (!document) return res.status(404).json({ message: "Document not found." });
+    const filePath = resolveFilePath(document.storagePath);
+    if (!filePath) {
+        return res.status(404).json({ message: "Original file is not available on this server. Please re-upload the document." });
+    }
     if (document.sourceType === "video") {
-        const mime = { ".mp4": "video/mp4", ".mov": "video/quicktime", ".webm": "video/webm" }[path.extname(document.storagePath).toLowerCase()];
+        const mime = { ".mp4": "video/mp4", ".mov": "video/quicktime", ".webm": "video/webm" }[path.extname(filePath).toLowerCase()];
         res.type(mime || "application/octet-stream");
         res.set("Content-Disposition", "inline");
         res.set("X-Content-Type-Options", "nosniff");
-        return res.sendFile(document.storagePath);
+        return res.sendFile(filePath);
     }
-    return res.download(document.storagePath, document.title);
+    return res.download(filePath, document.title);
 });
 router.delete("/:documentId", async (req, res) => {
     if (!/^[0-9a-f-]{36}$/i.test(req.params.documentId)) return res.status(404).json({ message: "Document not found." });
-    const document = store.getDocument(req.user.id, req.params.documentId);
+    const document = await store.getDocument(req.user.id, req.params.documentId);
     if (!document) return res.status(404).json({ message: "Document not found." });
     try {
         await deleteDocument(document.id, req.user.id);
-        store.deleteDocument(req.user.id, document.id);
-        await unlink(document.storagePath).catch(error => console.error("Document file cleanup failed:", error.message));
+        await store.deleteDocument(req.user.id, document.id);
+        const filePath = resolveFilePath(document.storagePath);
+        if (filePath) await unlink(filePath).catch(error => console.error("Document file cleanup failed:", error.message));
         return res.json({ success: true });
     } catch (error) {
         console.error("Document deletion failed:", error.message);
